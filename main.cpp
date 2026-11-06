@@ -23,11 +23,6 @@ int hierarchy(char c){
 }
 
 int calc(stack<word>& st){
-    //wszystko sprowadza sie do dwoch liczb     A OPERATOR B
-    //rekurencyjnie licze wszystko, az zostana dwie liczby
-    //pomijam na razie sytuacje gdzie w stack zaczyna sie od liczby
-    //zakladam, ze zaczyna sie od operatora
-
     int a = 0, b=0;
     char op = '\0';
 
@@ -53,7 +48,7 @@ int calc(stack<word>& st){
 
 
 int main(){
-    string s = "5-2";
+    string s = "5*5+100/4";
     int output = 0;
     stack<word> st;
     stack<char> op;
@@ -73,11 +68,12 @@ int main(){
         st.push({stoi(num), false});
         num.clear();
 
-        if(op.size() > 0){
+        while(op.size() > 0){
             if(hierarchy(s[i]) < hierarchy(op.top())){
                 st.push({op.top(), true});
                 op.pop();
             }
+            else break;
         }
         op.push(s[i]);
     }
