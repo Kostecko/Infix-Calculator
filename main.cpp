@@ -24,19 +24,19 @@ int hierarchy(char c){
     return 0;
 }
 
-double calc(stack<word>& st){
-    if(!st.size()) return NAN;
+double calc(stack<word>& wordStack){
+    if(!wordStack.size()) return NAN;
 
     double output = 0.0, a = 0.0, b = 0.0;
-    char op = st.top().operat;
+    char operat = wordStack.top().operat;
     
-    if(op){
-        st.pop();
-        b = calc(st);
-        a = calc(st);
+    if(operat){
+        wordStack.pop();
+        b = calc(wordStack);
+        a = calc(wordStack);
     } 
 
-    switch(op){
+    switch(operat){
         case '+': output = a + b; break;
         case '-': output = a - b; break;
         case '*': output = a * b; break;
@@ -44,68 +44,76 @@ double calc(stack<word>& st){
         default: break;
     }
     
-    if(!op && st.size()){
-        output = st.top().val;
-        st.pop();
+    if(!operat && wordStack.size()){
+        output = wordStack.top().val;
+        wordStack.pop();
     }
     return output;
 }
 
 
 int main(){
-    string s = "3*2";
-    double output = 0.0;
-    stack<word> st;
-    stack<char> op;
+    cout<<"<================= SIMPLE CALCULATOR! =================>\n\n";
+    cout<<"Infix -> RPN translation using shunting-yard algorithm\n";
+    cout<<"Only +, -, *, \\ works \n\n";
+    cout<<"<======================================================>\n\n\n";
 
-    int slen = s.length();
+    cout<<"Equation:\n>> ";
+    string equation;
+    cin>>equation;
+
+    double output = 0.0;
+    stack<word> wordStack;
+    stack<char> operatorStack;
+
+    int eqlen = equation.length();
 
     string num="";
-    for(int i=0; i <= s.length(); i++){
-        if(op.size() && op.top() == ')'){
-            op.pop();
-            while(op.size() && op.top() != '('){
-                st.push({NAN, op.top()});
-                op.pop();
+    for(int i=0; i <= equation.length(); i++){
+        if(operatorStack.size() && operatorStack.top() == ')'){
+            operatorStack.pop();
+            while(operatorStack.size() && operatorStack.top() != '('){
+                wordStack.push({NAN, operatorStack.top()});
+                operatorStack.pop();
             }
-            op.pop();
+            operatorStack.pop();
         }
 
-        if(!hierarchy(s[i])){ 
-            if(s[i] != ' ' && s[i] != '\0') num += s[i]; 
+        if(!hierarchy(equation[i])){ 
+            if(equation[i] != ' ' && equation[i] != '\0') num += equation[i]; 
             continue; 
         }
 
         if(num.length() > 0){
-            st.push({stod(num), '\0'});
+            wordStack.push({stod(num), '\0'});
             num.clear();
         }
 
-        while(op.size() > 0){
-            int sih = hierarchy(s[i]);
-            int oth = hierarchy(op.top());
+        while(operatorStack.size() > 0){
+            int sih = hierarchy(equation[i]);
+            int oth = hierarchy(operatorStack.top());
 
             if(sih != 0 && oth != 9 && sih <= oth){
-                st.push({NAN, op.top()});
-                op.pop();
+                wordStack.push({NAN, operatorStack.top()});
+                operatorStack.pop();
             }
             else break;
         }
-        op.push(s[i]);
+        operatorStack.push(equation[i]);
     }
 
     if(!num.empty()){
-        st.push({stod(num), '\0'});
+        wordStack.push({stod(num), '\0'});
         num.clear();
     }
 
-    int ops = op.size();
+    int ops = operatorStack.size();
     for(int i = 0; i < ops; i++){
-        st.push({NAN, op.top()});
-        op.pop();
+        wordStack.push({NAN, operatorStack.top()});
+        operatorStack.pop();
     }
     
-    output = calc(st);
+    output = calc(wordStack);
 
     printf("output: %.15g\n\n", output);
    
