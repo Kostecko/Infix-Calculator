@@ -23,12 +23,10 @@ int hierarchy(char c){
 }
 
 int calc(stack<word>& st){
-    static int iterator = 0;
-    ++iterator;
-    //printf("%i\n", iterator);
-
-    int a = 0, b=0;
+    int output = 0, a = 0, b=0;
     char op = '\0';
+
+    if(!st.size()) return 0;
 
     if(st.top().isOp){
         op = char(st.top().val);
@@ -38,21 +36,23 @@ int calc(stack<word>& st){
     } 
 
     switch(op){
-        case '+': return a + b;
-        case '-': return a - b;
-        case '*': return a * b;
-        case '/': return a / b;
+        case '+': output = a + b; break;
+        case '-': output = a - b; break;
+        case '*': output = a * b; break;
+        case '/': output = a / b; break;
         default: break;
     }
-
-    int r = st.top().val;
-    st.pop();
-    return r;
+    
+    if(!op && st.size()){
+        output = st.top().val;
+        st.pop();
+    }
+    return output;
 }
 
 
 int main(){
-    string s = "2+(2*2)";
+    string s = "2*(2+2)";
     int output = 0;
     stack<word> st;
     stack<char> op;
@@ -60,7 +60,7 @@ int main(){
     int slen = s.length();
 
     string num="";
-    for(int i=0; s[i] != '\0'; i++){
+    for(int i=0; i <= s.length(); i++){
         if(s[i] == ' ') continue;
         
         if(op.size() && op.top() == ')'){
@@ -84,7 +84,10 @@ int main(){
         }
 
         while(op.size() > 0){
-            if((hierarchy(s[i]) < hierarchy(op.top())) && hierarchy(op.top()) != 9){
+            int sih = hierarchy(s[i]);
+            int oth = hierarchy(op.top());
+
+            if(sih != 0 && oth != 9 && sih < oth){
                 st.push({op.top(), true});
                 op.pop();
             }
