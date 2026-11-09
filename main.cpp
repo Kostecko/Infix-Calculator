@@ -1,12 +1,14 @@
 #include <iostream>
 #include <stack>
 #include <string>
+#include <cmath>
+#include <limits>
 
 using namespace std;
 
 struct word{
-    int val = 0;
-    bool isOp = 0;
+    double val = 0;
+    char operat = '\0';
 };
 
 int hierarchy(char c){
@@ -22,14 +24,13 @@ int hierarchy(char c){
     return 0;
 }
 
-int calc(stack<word>& st){
-    int output = 0, a = 0, b=0;
-    char op = '\0';
+double calc(stack<word>& st){
+    if(!st.size()) return NAN;
 
-    if(!st.size()) return 0;
-
-    if(st.top().isOp){
-        op = char(st.top().val);
+    double output = 0.0, a = 0.0, b = 0.0;
+    char op = st.top().operat;
+    
+    if(op){
         st.pop();
         b = calc(st);
         a = calc(st);
@@ -52,8 +53,8 @@ int calc(stack<word>& st){
 
 
 int main(){
-    string s = "2*(2+2)";
-    int output = 0;
+    string s = "3*2";
+    double output = 0.0;
     stack<word> st;
     stack<char> op;
 
@@ -61,25 +62,22 @@ int main(){
 
     string num="";
     for(int i=0; i <= s.length(); i++){
-        if(s[i] == ' ') continue;
-        
         if(op.size() && op.top() == ')'){
             op.pop();
-            while((op.top() != '(') && op.size()){
-                st.push({op.top(), true});
+            while(op.size() && op.top() != '('){
+                st.push({NAN, op.top()});
                 op.pop();
             }
             op.pop();
         }
 
-        if(!hierarchy(s[i])){
-            num += s[i];
-            if(i == slen - 1) 
-                st.push({stoi(num), false});
-            continue;
+        if(!hierarchy(s[i])){ 
+            if(s[i] != ' ' && s[i] != '\0') num += s[i]; 
+            continue; 
         }
+
         if(num.length() > 0){
-            st.push({stoi(num), false});
+            st.push({stod(num), '\0'});
             num.clear();
         }
 
@@ -87,8 +85,8 @@ int main(){
             int sih = hierarchy(s[i]);
             int oth = hierarchy(op.top());
 
-            if(sih != 0 && oth != 9 && sih < oth){
-                st.push({op.top(), true});
+            if(sih != 0 && oth != 9 && sih <= oth){
+                st.push({NAN, op.top()});
                 op.pop();
             }
             else break;
@@ -96,16 +94,20 @@ int main(){
         op.push(s[i]);
     }
 
+    if(!num.empty()){
+        st.push({stod(num), '\0'});
+        num.clear();
+    }
+
     int ops = op.size();
     for(int i = 0; i < ops; i++){
-        st.push({op.top(), true});
+        st.push({NAN, op.top()});
         op.pop();
     }
     
-    printf("st size: %zu\n\n", st.size());
     output = calc(st);
-   
-    printf("output: %i\n\n", output);
+
+    printf("output: %.15g\n\n", output);
    
     return 0;
 }
