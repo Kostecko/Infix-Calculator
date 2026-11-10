@@ -12,6 +12,8 @@ enum TOKEN_ID{
     OP_SUB,
     OP_MUL,
     OP_DIV,
+    LPAREN,
+    RPAREN,
     TERMINATOR,
     INVALID,
     NUL
@@ -51,12 +53,12 @@ public:
 int main(){
     cout<<"<================= LITTLE LESS SIMPLE CALCULATOR! =================>\n\n";
     cout<<"Recursive Descent Method\n";
-    cout<<"Available operations: +, -, *, /\n\n";
+    cout<<"Available operations: +, -, *, /, ()\n\n";
     cout<<"<==================================================================>\n\n\n";
 
-    //cout<<"Equation:\n>> ";
-    string input = "2+3*4";
-    //cin>>equation;
+    cout<<"Equation:\n>> ";
+    string input;//= "2+2*4*(2+7)";
+    cin>>input;
     Parser output(input);
 
     
@@ -79,6 +81,8 @@ void Parser::lexInput(const string& input){
             case '-': token.tid = TOKEN_ID::OP_SUB; break;
             case '*': token.tid = TOKEN_ID::OP_MUL; break;
             case '/': token.tid = TOKEN_ID::OP_DIV; break;
+            case '(': token.tid = TOKEN_ID::LPAREN; break;
+            case ')': token.tid = TOKEN_ID::RPAREN; break;
             case '\0':token.tid = TOKEN_ID::TERMINATOR; break;
             case ' ': continue;
             default: 
@@ -150,11 +154,18 @@ const double Parser::parseTerm(){
 }
 
  const double Parser::parseFactor(){
+    double output = NAN;
     switch(peek().tid){
         case TOKEN_ID::NUM: return advance().value;
+        case TOKEN_ID::LPAREN: 
+        advance(); 
+        output = parseExpr();
+        if(peek().tid == TOKEN_ID::RPAREN) advance();
+        else output = NAN;
+        break;
         default: break;
     }
-    return NAN;
+    return output;
 }
 
 //EXTERNAL FUNCTIONS
