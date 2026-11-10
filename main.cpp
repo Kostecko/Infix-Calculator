@@ -51,11 +51,11 @@ public:
 int main(){
     cout<<"<================= LITTLE LESS SIMPLE CALCULATOR! =================>\n\n";
     cout<<"Recursive Descent Method\n";
-    cout<<"Available operations: +, -, *, \\\n\n";
+    cout<<"Available operations: +, -, *, /\n\n";
     cout<<"<==================================================================>\n\n\n";
 
     //cout<<"Equation:\n>> ";
-    string input = "2+3*6/2";
+    string input = "2+3*4";
     //cin>>equation;
     Parser output(input);
 
@@ -69,11 +69,9 @@ int main(){
 //INTERNAL FUNCTIONS
 
 void Parser::lexInput(const string& input){
-    if(!input.length()) return;
-
     Token token;
 
-    for(int i =0; i <= input.length(); i++){
+    for(size_t i =0; i <= input.length(); i++){
         token = {TOKEN_ID::NUL, NAN, -1};
 
         switch(input[i]){
@@ -82,16 +80,21 @@ void Parser::lexInput(const string& input){
             case '*': token.tid = TOKEN_ID::OP_MUL; break;
             case '/': token.tid = TOKEN_ID::OP_DIV; break;
             case '\0':token.tid = TOKEN_ID::TERMINATOR; break;
+            case ' ': continue;
             default: 
-                token.tid = TOKEN_ID::NUM; 
-                string number = "";
-                while(isdigit(input[i]) || input[i] == '.') 
+                if(isdigit(input[i])){
+                    string number = "";
+                    while(isdigit(static_cast<unsigned char>(input[i])) || input[i] == '.') 
                     number += input[i++];
-
-                if(number.length()){ 
-                    i--; 
-                    token.value = stod(number); 
+                    
+                    if(number.length()){ 
+                        token.tid = TOKEN_ID::NUM; 
+                        i--; 
+                        token.value = stod(number); 
+                    }
                 }
+                else token.tid = TOKEN_ID::INVALID;
+                
                 break;
         }
         token.index = i;
@@ -124,28 +127,26 @@ const Token& Parser::advance(){
 
 const double Parser::parseExpr(){
     double left = parseTerm();
-    double right = 0.0;
-    double output = left;
 
-    switch(peek().tid){
-        case TOKEN_ID::OP_ADD: 
-            advance(); right = parseTerm(); output = left + right; break;
-        case TOKEN_ID::OP_SUB:
-            advance(); right = parseTerm(); output = left - right; break;
-        default: break;
+    while(peek().tid == TOKEN_ID::OP_ADD || peek().tid == TOKEN_ID::OP_SUB){
+        TOKEN_ID sign = peek().tid;
+        advance();
+        if(sign == TOKEN_ID::OP_ADD) left += parseTerm();
+        else left -= parseTerm();
     }
-    return output;
+    return left;
 }
 
 const double Parser::parseTerm(){
-    double a = parseFactor();
+    double left = parseFactor();
 
-    switch(peek().tid){
-        case TOKEN_ID::OP_MUL: advance(); a *= parseExpr(); break;
-        case TOKEN_ID::OP_DIV: advance(); a /= parseExpr(); break;
-        default: break;
+    while(peek().tid == TOKEN_ID::OP_MUL || peek().tid == TOKEN_ID::OP_DIV){
+        TOKEN_ID sign = peek().tid;
+        advance(); 
+        if(sign == TOKEN_ID::OP_MUL) left *= parseFactor();
+        else left /= parseFactor();
     }
-    return a;
+    return left;
 }
 
  const double Parser::parseFactor(){
@@ -160,7 +161,7 @@ const double Parser::parseTerm(){
 
 Parser::Parser(const string& input) {
     resultVal = NAN;
-    bool doneCalc = false;
+    doneCalc = false;
     index = 0;
     inputTokens.reserve(input.length()+1);
     lexInput(input);
