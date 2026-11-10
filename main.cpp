@@ -1,121 +1,172 @@
 #include <iostream>
-#include <stack>
+#include <vector>
 #include <string>
 #include <cmath>
-#include <limits>
+#include <cctype>
 
 using namespace std;
 
-struct word{
-    double val = 0;
-    char operat = '\0';
+enum TOKEN_ID{
+    NUM,
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+    TERMINATOR,
+    INVALID,
+    NUL
 };
 
-int hierarchy(char c){
-    switch(c){
-        case '+': return 2;
-        case '-': return 2;
-        case '*': return 3;
-        case '/': return 3;
-        case '(': return 9;
-        case ')': return 9;
-        default: break;
-    }
+struct Token{
+    TOKEN_ID tid = TOKEN_ID::NUL;
+    double value = NAN;
+    int index = -1;
+};
+
+class Parser{
+private:
+    int index;
+    vector<Token> inputTokens;
+    double resultVal;
+    bool doneCalc;
+
+
+    void lexInput(const string& input);
+    void calculate();
+
+    const Token& peek() const;
+    const Token& advance();
+
+    const double parseExpr(); 
+    const double parseTerm(); 
+    const double parseFactor(); 
+public:
+    Parser(const string& input);
+
+    double result();
+};
+
+
+
+int main(){
+    cout<<"<================= LITTLE LESS SIMPLE CALCULATOR! =================>\n\n";
+    cout<<"Recursive Descent Method\n";
+    cout<<"Available operations: +, -, *, \\\n\n";
+    cout<<"<==================================================================>\n\n\n";
+
+    //cout<<"Equation:\n>> ";
+    string input = "2+3*6/2";
+    //cin>>equation;
+    Parser output(input);
+
+    
+
+    printf("output: %.15g\n\n", output.result());
+   
     return 0;
 }
 
-double calc(stack<word>& wordStack){
-    if(!wordStack.size()) return NAN;
+//INTERNAL FUNCTIONS
 
-    double output = 0.0, a = 0.0, b = 0.0;
-    char operat = wordStack.top().operat;
-    
-    if(operat){
-        wordStack.pop();
-        b = calc(wordStack);
-        a = calc(wordStack);
-    } 
+void Parser::lexInput(const string& input){
+    if(!input.length()) return;
 
-    switch(operat){
-        case '+': output = a + b; break;
-        case '-': output = a - b; break;
-        case '*': output = a * b; break;
-        case '/': output = a / b; break;
-        default: break;
+    Token token;
+
+    for(int i =0; i <= input.length(); i++){
+        token = {TOKEN_ID::NUL, NAN, -1};
+
+        switch(input[i]){
+            case '+': token.tid = TOKEN_ID::OP_ADD; break;
+            case '-': token.tid = TOKEN_ID::OP_SUB; break;
+            case '*': token.tid = TOKEN_ID::OP_MUL; break;
+            case '/': token.tid = TOKEN_ID::OP_DIV; break;
+            case '\0':token.tid = TOKEN_ID::TERMINATOR; break;
+            default: 
+                token.tid = TOKEN_ID::NUM; 
+                string number = "";
+                while(isdigit(input[i]) || input[i] == '.') 
+                    number += input[i++];
+
+                if(number.length()){ 
+                    i--; 
+                    token.value = stod(number); 
+                }
+                break;
+        }
+        token.index = i;
+        inputTokens.push_back(token);
     }
-    
-    if(!operat && wordStack.size()){
-        output = wordStack.top().val;
-        wordStack.pop();
+}
+
+void Parser::calculate(){
+    index = 0;
+    double output = parseExpr();
+    doneCalc = true;
+
+    if(peek().tid != TOKEN_ID::TERMINATOR){
+        cout<<"calculate() error!\n\n";
+        return;
+    }
+    resultVal = output;
+}
+
+
+const Token& Parser::peek() const{
+    return inputTokens.at(index);
+}
+
+const Token& Parser::advance(){
+    const Token& t = peek();
+    if(t.tid != TOKEN_ID::TERMINATOR) index++;
+    return t;
+}
+
+const double Parser::parseExpr(){
+    double left = parseTerm();
+    double right = 0.0;
+    double output = left;
+
+    switch(peek().tid){
+        case TOKEN_ID::OP_ADD: 
+            advance(); right = parseTerm(); output = left + right; break;
+        case TOKEN_ID::OP_SUB:
+            advance(); right = parseTerm(); output = left - right; break;
+        default: break;
     }
     return output;
 }
 
+const double Parser::parseTerm(){
+    double a = parseFactor();
 
-int main(){
-    cout<<"<================= SIMPLE CALCULATOR! =================>\n\n";
-    cout<<"Infix -> RPN translation using shunting-yard algorithm\n";
-    cout<<"Only +, -, *, \\ works \n\n";
-    cout<<"<======================================================>\n\n\n";
-
-    cout<<"Equation:\n>> ";
-    string equation;
-    cin>>equation;
-
-    double output = 0.0;
-    stack<word> wordStack;
-    stack<char> operatorStack;
-
-    int eqlen = equation.length();
-
-    string num="";
-    for(int i=0; i <= equation.length(); i++){
-        if(operatorStack.size() && operatorStack.top() == ')'){
-            operatorStack.pop();
-            while(operatorStack.size() && operatorStack.top() != '('){
-                wordStack.push({NAN, operatorStack.top()});
-                operatorStack.pop();
-            }
-            operatorStack.pop();
-        }
-
-        if(!hierarchy(equation[i])){ 
-            if(equation[i] != ' ' && equation[i] != '\0') num += equation[i]; 
-            continue; 
-        }
-
-        if(num.length() > 0){
-            wordStack.push({stod(num), '\0'});
-            num.clear();
-        }
-
-        while(operatorStack.size() > 0){
-            int sih = hierarchy(equation[i]);
-            int oth = hierarchy(operatorStack.top());
-
-            if(sih != 0 && oth != 9 && sih <= oth){
-                wordStack.push({NAN, operatorStack.top()});
-                operatorStack.pop();
-            }
-            else break;
-        }
-        operatorStack.push(equation[i]);
+    switch(peek().tid){
+        case TOKEN_ID::OP_MUL: advance(); a *= parseExpr(); break;
+        case TOKEN_ID::OP_DIV: advance(); a /= parseExpr(); break;
+        default: break;
     }
+    return a;
+}
 
-    if(!num.empty()){
-        wordStack.push({stod(num), '\0'});
-        num.clear();
+ const double Parser::parseFactor(){
+    switch(peek().tid){
+        case TOKEN_ID::NUM: return advance().value;
+        default: break;
     }
+    return NAN;
+}
 
-    int ops = operatorStack.size();
-    for(int i = 0; i < ops; i++){
-        wordStack.push({NAN, operatorStack.top()});
-        operatorStack.pop();
-    }
-    
-    output = calc(wordStack);
+//EXTERNAL FUNCTIONS
 
-    printf("output: %.15g\n\n", output);
-   
-    return 0;
+Parser::Parser(const string& input) {
+    resultVal = NAN;
+    bool doneCalc = false;
+    index = 0;
+    inputTokens.reserve(input.length()+1);
+    lexInput(input);
+}
+
+double Parser::result() {
+    if(!doneCalc) calculate();
+    return resultVal;
 }
