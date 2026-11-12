@@ -3,7 +3,7 @@
 #include <string>
 #include <cmath>
 #include <cctype>
-#define clear() printf("\033[H\033[J")
+#define clearConsole() printf("\033[H\033[J")
 
 using namespace std;
 
@@ -13,6 +13,8 @@ enum TOKEN_ID{
     OP_SUB,
     OP_MUL,
     OP_DIV,
+    OP_POW,
+    OP_ROOT,
     LPAREN,
     RPAREN,
     TERMINATOR,
@@ -30,12 +32,9 @@ class Parser{
 private:
     int index;
     vector<Token> inputTokens;
-    double resultVal;
-    bool doneCalc;
-
 
     void lexInput(const string& input);
-    void calculate();
+    double calculate();
 
     const Token& peek() const;
     const Token& advance();
@@ -43,6 +42,7 @@ private:
     const double parseExpr(); 
     const double parseTerm(); 
     const double parseSign();
+    const double parsePower();
     const double parseFactor(); 
 public:
     Parser(const string& input);
@@ -51,10 +51,11 @@ public:
 };
 
 void useCalc(){
-    clear();
+    clearConsole();
     cout<<"<================= LITTLE LESS SIMPLE CALCULATOR! =================>\n\n";
-    cout<<"Recursive Descent Method\n";
-    cout<<"Available operations: +, -, *, /, ()\n\n";
+    cout<<"Recursive Descent Method\n\n";
+    cout<<"Available operations: +, -, *, /, (), ^\n";
+    cout<<"Incoming: root(), %, !\n\n";
     cout<<"<==================================================================>\n\n\n";
 
     cout<<"Equation:\n>> ";
@@ -65,49 +66,18 @@ void useCalc(){
 }
 
 int main(){
-    vector<string> tests = {
-        // minus na początku
-        "-5", "-5+8", "-2-2", "-0.5",
-    
-        // minus po operatorze
-        "3*-2", "5+-2", "5--2", "8/-2", "5/-2", "-2*-3",
-    
-        // podwójny minus
-        "--5", "---5", "2---3",
-    
-        // minus przed nawiasem
-        "-(2+3)", "-(2+3)*4", "2*-(3+4)", "-(-(2))", "-((1))",
-    
-        // nawias z ujemnym środkiem
-        "(-2)*(-3)", "(-2+5)*2", "((-1))",
-    
-        // spacje
-        "- 5", "2 - -3",
-    
-        // priorytet i łączność
-        "-2*3", "-6/3/2", "10--3-2",
-    
-        // błędy (powinny dać NAN)
-        "-", "--", "2-", "-()", "-*3"
-    };
+    while(1){
+        cout<<"[1] calculate\n[2] Exit\n>> ";
+        char c;
 
-
-    for(auto& i : tests){
-        Parser p(i);
-        cout<<p.result()<<endl;
+        if(!(cin >> c)) break;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        switch(c){
+            case '1': useCalc(); break;
+            case '2': return 0;
+            default: cout<<"what\?\n"; break;
+        }
     }
-
-    //while(1){
-    //    char c = '\0';
-    //    cout<<"[1] calculate\n[2] Exit\n>> ";
-    //    cin>>c;
-    //    switch(c){
-    //        case '1': useCalc(); break;
-    //        case '2': return 0;
-    //        default: cout<<"what\?\n"; break;
-    //    }
-    //}
-    
     return 0;
 }
 
@@ -126,10 +96,11 @@ void Parser::lexInput(const string& input){
             case '/': token.tid = TOKEN_ID::OP_DIV; break;
             case '(': token.tid = TOKEN_ID::LPAREN; break;
             case ')': token.tid = TOKEN_ID::RPAREN; break;
+            case '^': token.tid = TOKEN_ID::OP_POW; break;
             case '\0':token.tid = TOKEN_ID::TERMINATOR; break;
             case ' ': continue;
             default: 
-                if(isdigit(static_cast<unsigned char>(input[i])) || input[i] == '.'){
+                if(isdigit(static_cast<unsigned char>(input[i]))){
                     string number = "";
                     while(isdigit(static_cast<unsigned char>(input[i])) || input[i] == '.') 
                     number += input[i++];
@@ -149,18 +120,17 @@ void Parser::lexInput(const string& input){
     }
 }
 
-void Parser::calculate(){
+double Parser::calculate(){
     index = 0;
     double output = parseExpr();
-    doneCalc = true;
 
     if(peek().tid != TOKEN_ID::TERMINATOR){
         cout<<"calculate() error!\n\n";
-        return;
+        return NAN;
     }
-    resultVal = output;
-}
 
+    return output;
+}
 
 const Token& Parser::peek() const{
     return inputTokens.at(index);
@@ -176,9 +146,9 @@ const double Parser::parseExpr(){
     double left = parseTerm();
 
     while(peek().tid == TOKEN_ID::OP_ADD || peek().tid == TOKEN_ID::OP_SUB){
-        TOKEN_ID sign = peek().tid;
+        TOKEN_ID op = peek().tid;
         advance();
-        if(sign == TOKEN_ID::OP_ADD) left += parseTerm();
+        if(op == TOKEN_ID::OP_ADD) left += parseTerm();
         else left -= parseTerm();
     }
     return left;
@@ -188,9 +158,9 @@ const double Parser::parseTerm(){
     double left = parseSign();
 
     while(peek().tid == TOKEN_ID::OP_MUL || peek().tid == TOKEN_ID::OP_DIV){
-        TOKEN_ID sign = peek().tid;
+        TOKEN_ID op = peek().tid;
         advance(); 
-        if(sign == TOKEN_ID::OP_MUL) left *= parseSign();
+        if(op == TOKEN_ID::OP_MUL) left *= parseSign();
         else left /= parseSign();
     }
     return left;
@@ -204,7 +174,20 @@ const double Parser::parseSign(){
         sign *= -1.0;
     }
 
-    return parseFactor() * sign;
+    return parsePower() * sign;
+}
+
+const double Parser::parsePower(){
+    double output = parseFactor();
+
+    if(peek().tid == TOKEN_ID::OP_POW){
+        advance();
+        double power = parseSign();
+        if(isnan(output) || isnan(power)) return NAN;
+        return pow(output, power);
+    }
+
+    return output;
 }
 
  const double Parser::parseFactor(){
@@ -227,14 +210,11 @@ const double Parser::parseSign(){
 //EXTERNAL FUNCTIONS
 
 Parser::Parser(const string& input) {
-    resultVal = NAN;
-    doneCalc = false;
     index = 0;
     inputTokens.reserve(input.length()+1);
     lexInput(input);
 }
 
 double Parser::result() {
-    if(!doneCalc) calculate();
-    return resultVal;
+    return calculate();
 }
